@@ -7,63 +7,79 @@
   >Show Hidden Categories</mat-checkbox
 >
 <mat-card>
-  <mat-tree [dataSource]="dataSource" [treeControl]="treeControl">
-    <mat-tree-node
-      *matTreeNodeDef="let node"
-      matTreeNodeToggle
-      matTreeNodePadding
-    >
-      <button mat-icon-button disabled></button>
-      <mat-checkbox
-        class="checklist-leaf-node"
-        color="primary"
-        [checked]="checklistSelection.isSelected(node)"
-        (change)="checklistSelection.toggle(node)"
-        >{{ node.item }}</mat-checkbox
-      >
-    </mat-tree-node>
-
-    <mat-tree-node
-      *matTreeNodeDef="let node; when: hasNoContent"
-      matTreeNodePadding
-    >
-      <button mat-icon-button disabled></button>
-      <mat-form-field>
-        <input matInput #itemValue placeholder="New item..." />
-      </mat-form-field>
-      <button mat-button (click)="saveNode(node, itemValue.value)">Save</button>
-    </mat-tree-node>
-
-    <mat-tree-node
-      *matTreeNodeDef="let node; when: hasChild"
-      matTreeNodePadding
-    >
-      <button
-        mat-icon-button
+  <mat-card-title>Checkbox</mat-card-title>
+  <mat-card-content>
+    <mat-tree [dataSource]="dataSource" [treeControl]="treeControl">
+      <mat-tree-node
+        *matTreeNodeDef="let node"
         matTreeNodeToggle
-        [attr.aria-label]="'toggle ' + node.filename"
+        matTreeNodePadding
       >
-        <mat-icon class="mat-icon-rtl-mirror">
-          {{ treeControl.isExpanded(node) ? "expand_more" : "chevron_right" }}
-        </mat-icon>
-      </button>
-      <mat-checkbox
-        color="primary"
-        [checked]="descendantsAllSelected(node)"
-        [indeterminate]="descendantsPartiallySelected(node)"
-        (change)="todoItemSelectionToggle(node)"
-        >{{ node.item }}</mat-checkbox
+        <button mat-icon-button disabled></button>
+        <mat-checkbox
+          class="checklist-leaf-node"
+          color="primary"
+          [checked]="categorySelection.isSelected(node)"
+          (change)="categorySelection.toggle(node)"
+          >{{ node.category_name }}</mat-checkbox
+        >
+      </mat-tree-node>
+
+      <mat-tree-node
+        *matTreeNodeDef="let node; when: hasNoContent"
+        matTreeNodePadding
       >
-      <button mat-icon-button (click)="addNewItem(node)">
-        <mat-icon>add</mat-icon>
-      </button>
-    </mat-tree-node>
-  </mat-tree>
+        <button mat-icon-button disabled></button>
+        <mat-form-field>
+          <input matInput #itemValue placeholder="New item..." />
+        </mat-form-field>
+        <button mat-button (click)="saveNode(node, itemValue.value)">
+          Save
+        </button>
+      </mat-tree-node>
+
+      <mat-tree-node
+        *matTreeNodeDef="let node; when: hasChild"
+        matTreeNodePadding
+      >
+        <button
+          mat-icon-button
+          matTreeNodeToggle
+          [attr.aria-label]="'toggle ' + node.filename"
+        >
+          <mat-icon class="mat-icon-rtl-mirror">
+            {{ treeControl.isExpanded(node) ? "expand_more" : "chevron_right" }}
+          </mat-icon>
+        </button>
+        <mat-checkbox
+          color="primary"
+          [checked]="descendantsAllSelected(node)"
+          [indeterminate]="descendantsPartiallySelected(node)"
+          (change)="categorySelectionToggle(node)"
+          >{{ node.category_name }}</mat-checkbox
+        >
+        <button mat-icon-button (click)="addNewItem(node)">
+          <mat-icon>add</mat-icon>
+        </button>
+      </mat-tree-node>
+    </mat-tree>
+  </mat-card-content>
 </mat-card>
 
 <div class="list-button">
-  <button mat-raised-button color="primary">Add category</button>
-  <button mat-raised-button color="primary">Add subcategory</button>
-  <button mat-raised-button color="primary">Hide</button>
-  <button mat-raised-button color="primary">Edit</button>
+  <button mat-raised-button color="primary" (click)="onAddCategory(checkedCategory)">Add category</button>
+  <button mat-raised-button color="primary" (click)="onAddSubCategory(checkedCategory)">Add subcategory</button>
+  <button mat-raised-button color="primary" (click)="onHideCategory(checkedCategory)">Hide</button>
+  <button mat-raised-button color="primary" (click)="onEditCategory(checkedCategory)">Edit</button>
 </div>
+
+<br />
+<br />
+<br />
+
+<mat-card>
+  <mat-card-title>Radio</mat-card-title>
+  <mat-card-content>
+
+  </mat-card-content>
+</mat-card>

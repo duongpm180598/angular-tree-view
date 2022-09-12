@@ -1,0 +1,17 @@
+<div mat-dialog-title>
+  {{ title }}
+</div>
+<div mat-dialog-content>
+  <form [formGroup]="categoryForm">
+    <mat-form-field appearance="fill">
+      <mat-label>Category name</mat-label>
+      <input matInput formControlName="category_name" />
+    </mat-form-field>
+  </form>
+</div>
+<div mat-dialog-actions>
+  <button mat-button (click)="close()">Close</button>
+  <button mat-button [mat-dialog-close]="categoryName" cdkFocusInitial>
+    Add
+  </button>
+</div>

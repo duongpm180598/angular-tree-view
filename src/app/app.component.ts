@@ -1,11 +1,13 @@
 import { SelectionModel } from '@angular/cdk/collections';
 import { FlatTreeControl, NestedTreeControl } from '@angular/cdk/tree';
 import { Component, Injectable } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import {
   MatTreeFlatDataSource,
   MatTreeFlattener,
 } from '@angular/material/tree';
 import { BehaviorSubject } from 'rxjs';
+import { AddCategoryPopupComponent } from './add-category-popup/add-category-popup.component';
 
 @Component({
   selector: 'app-root',
@@ -14,37 +16,37 @@ import { BehaviorSubject } from 'rxjs';
 })
 export class AppComponent {
   title = 'treeview';
+  checkedCategory: any;
   /** Map from flat node to nested node. This helps us finding the nested node to be modified */
-  flatNodeMap = new Map<TodoItemFlatNode, TodoItemNode>();
+  flatNodeMap = new Map<CategoryFlatNode, CategoryItemFlatNode>();
 
   /** Map from nested node to flattened node. This helps us to keep the same object for selection */
-  nestedNodeMap = new Map<TodoItemNode, TodoItemFlatNode>();
+  nestedNodeMap = new Map<CategoryItemFlatNode, CategoryFlatNode>();
 
   /** A selected parent node to be inserted */
-  selectedParent: TodoItemFlatNode | null = null;
+  selectedParent: CategoryFlatNode | null = null;
 
   /** The new item's name */
   newItemName = '';
 
-  treeControl: FlatTreeControl<TodoItemFlatNode>;
+  treeControl: FlatTreeControl<CategoryFlatNode>;
 
-  treeFlattener: MatTreeFlattener<TodoItemNode, TodoItemFlatNode>;
+  treeFlattener: MatTreeFlattener<CategoryItemFlatNode, CategoryFlatNode>;
 
-  dataSource: MatTreeFlatDataSource<TodoItemNode, TodoItemFlatNode>;
+  // dataSource: MatTreeFlatDataSource<CategoryItemFlatNode, CategoryFlatNode>;
+  dataSource: any;
 
   /** The selection for checklist */
-  checklistSelection = new SelectionModel<TodoItemFlatNode>(
-    true /* multiple */
-  );
+  categorySelection = new SelectionModel<CategoryFlatNode>(true /* multiple */);
 
-  constructor(private database: ChecklistDatabase) {
+  constructor(private database: ChecklistDatabase, private dialog: MatDialog) {
     this.treeFlattener = new MatTreeFlattener(
       this.transformer,
       this.getLevel,
       this.isExpandable,
       this.getChildren
     );
-    this.treeControl = new FlatTreeControl<TodoItemFlatNode>(
+    this.treeControl = new FlatTreeControl<CategoryFlatNode>(
       this.getLevel,
       this.isExpandable
     );
@@ -58,27 +60,31 @@ export class AppComponent {
     });
   }
 
-  getLevel = (node: TodoItemFlatNode) => node.level;
+  getLevel = (node: CategoryFlatNode) => node.level;
 
-  isExpandable = (node: TodoItemFlatNode) => node.expandable;
+  isExpandable = (node: CategoryFlatNode) => node.expandable;
 
-  getChildren = (node: TodoItemNode): TodoItemNode[] => node.children;
+  getChildren = (node: CategoryItemFlatNode): CategoryItemFlatNode[] =>
+    node.children;
 
-  hasChild = (_: number, _nodeData: TodoItemFlatNode) => _nodeData.expandable;
+  hasChild = (_: number, _nodeData: CategoryFlatNode) => _nodeData.expandable;
 
-  hasNoContent = (_: number, _nodeData: TodoItemFlatNode) =>
-    _nodeData.item === '';
+  hasNoContent = (_: number, _nodeData: CategoryFlatNode) =>
+    _nodeData.category_name === '';
 
   /**
    * Transformer to convert nested node to flat node. Record the nodes in maps for later use.
    */
-  transformer = (node: TodoItemNode, level: number) => {
+  transformer = (node: CategoryItemFlatNode, level: number) => {
     const existingNode = this.nestedNodeMap.get(node);
     const flatNode =
-      existingNode && existingNode.item === node.item
+      existingNode && existingNode.category_name === node.category_name
         ? existingNode
-        : new TodoItemFlatNode();
-    flatNode.item = node.item;
+        : new CategoryFlatNode();
+    flatNode.category_id = node.category_id;
+    flatNode.parent_category_id = node.parent_category_id;
+    flatNode.isHidden = node.isHidden;
+    flatNode.category_name = node.category_name;
     flatNode.level = level;
     flatNode.expandable = !!node.children;
     this.flatNodeMap.set(flatNode, node);
@@ -89,80 +95,157 @@ export class AppComponent {
   onShowHidden(event: any) {}
 
   /** Whether all the descendants of the node are selected */
-  descendantsAllSelected(node: TodoItemFlatNode): boolean {
+  descendantsAllSelected(node: CategoryFlatNode): boolean {
     const descendants = this.treeControl.getDescendants(node);
     return descendants.every((child) =>
-      this.checklistSelection.isSelected(child)
+      this.categorySelection.isSelected(child)
     );
   }
 
   /** Whether part of the descendants are selected */
-  descendantsPartiallySelected(node: TodoItemFlatNode): boolean {
+  descendantsPartiallySelected(node: CategoryFlatNode): boolean {
     const descendants = this.treeControl.getDescendants(node);
     const result = descendants.some((child) =>
-      this.checklistSelection.isSelected(child)
+      this.categorySelection.isSelected(child)
     );
     return result && !this.descendantsAllSelected(node);
   }
 
   /** Toggle the to-do item selection. Select/deselect all the descendants node */
-  todoItemSelectionToggle(node: TodoItemFlatNode): void {
-    this.checklistSelection.toggle(node);
+  categorySelectionToggle(node: CategoryFlatNode): void {
+    this.categorySelection.toggle(node);
     const descendants = this.treeControl.getDescendants(node);
-    this.checklistSelection.isSelected(node)
-      ? this.checklistSelection.select(...descendants)
-      : this.checklistSelection.deselect(...descendants);
+    this.categorySelection.isSelected(node)
+      ? this.categorySelection.select(...descendants)
+      : this.categorySelection.deselect(...descendants);
+    this.checkedCategory = this.categorySelection.isSelected(node) ? node : {};
   }
 
   /** Select the category so we can insert the new item. */
-  addNewItem(node: TodoItemFlatNode) {
+  addNewItem(node: CategoryFlatNode) {
+    console.log(node)
     const parentNode = this.flatNodeMap.get(node);
     this.database.insertItem(parentNode!, '');
     this.treeControl.expand(node);
   }
 
   /** Save the node to database */
-  saveNode(node: TodoItemFlatNode, itemValue: string) {
+  saveNode(node: CategoryFlatNode, itemValue: string) {
     const nestedNode = this.flatNodeMap.get(node);
     this.database.updateItem(nestedNode!, itemValue);
   }
+
+  onAddCategory(node: CategoryFlatNode) {
+    const dialogRef = this.dialog.open(AddCategoryPopupComponent, {
+      data: { category: this.checkedCategory },
+    });
+    dialogRef.afterClosed().subscribe((category_name) => {
+      console.log(category_name);
+    });
+    // console.log('this.checkedCategory', this.checkedCategory);
+    // const nest = (items: any, category_id = 0, link = 'parent_category_id') =>
+    //   items
+    //     .filter((item: any) => item[link] === category_id)
+    //     .map((item: any) => ({
+    //       ...items,
+    //       children: nest(items, item.category_id),
+    //     }));
+    // console.log(nest(TREE_DATA_2));
+  }
+
+  onAddSubCategory(node: CategoryFlatNode) {
+    const dialogRef = this.dialog.open(AddCategoryPopupComponent, {
+      data: { node },
+    });
+    dialogRef.afterClosed().subscribe((category_name) => {
+      // this.addNewItem(node)
+      this.saveNode(node, category_name)
+    });
+  }
+
+  onHideCategory(node: CategoryFlatNode) {}
+
+  onEditCategory(node: CategoryFlatNode) {}
 }
 
 /**
  * Node for to-do item
  */
-export class TodoItemNode {
-  children!: TodoItemNode[];
-  item!: string;
+export class CategoryItemFlatNode {
+  children!: CategoryItemFlatNode[];
+  category_id!: number;
+  category_name!: string;
+  parent_category_id!: number;
+  level!: number;
+  expandable!: boolean;
+  isHidden!: boolean;
 }
 
 /** Flat to-do item node with expandable and level information */
-export class TodoItemFlatNode {
-  item!: string;
+export class CategoryFlatNode {
+  category_id!: number;
+  category_name!: string;
+  parent_category_id!: number;
   level!: number;
   expandable!: boolean;
+  isHidden!: boolean;
+  children!: [];
 }
 
 /**
  * The Json object for to-do list data.
  */
-const TREE_DATA = {
-  Groceries: {
-    'Almond Meal flour': null,
-    'Organic eggs': null,
-    'Protein Powder': null,
-    Fruits: {
-      Apple: null,
-      Berries: ['Blueberry', 'Raspberry'],
-      Orange: null,
-    },
+const TREE_DATA = [
+  {
+    category_id: 1,
+    parent_category_id: 0,
+    category_name: 'Staffs',
+    ishidden: false,
+    level: null,
+    expandable: false,
+    children: [
+      {
+        category_id: 2,
+        parent_category_id: 1,
+        category_name: 'Teachers',
+        ishidden: false,
+        level: null,
+        expandable: false,
+        children: [],
+      },
+      {
+        category_id: 3,
+        parent_category_id: 1,
+        category_name: 'Security',
+        ishidden: false,
+        level: null,
+        expandable: false,
+        children: [],
+      },
+    ],
   },
-  Reminders: [
-    'Cook dinner',
-    'Read the Material Design spec',
-    'Upgrade Application to Angular',
-  ],
-};
+];
+
+let TREE_DATA_2: any = [
+  {
+    category_id: 1,
+    parent_category_id: 0,
+    category_name: 'Staffs',
+    ishidden: false,
+  },
+  {
+    category_id: 2,
+    parent_category_id: 1,
+    category_name: 'Teachers',
+    ishidden: false,
+  },
+  {
+    category_id: 3,
+    parent_category_id: 1,
+    category_name: 'Security',
+    ishidden: false,
+  },
+];
 
 /**
  * Checklist database, it can build a tree structured Json object.
@@ -171,9 +254,10 @@ const TREE_DATA = {
  */
 @Injectable()
 export class ChecklistDatabase {
-  dataChange = new BehaviorSubject<TodoItemNode[]>([]);
+  dataChange = new BehaviorSubject<any[]>([]);
+  treeData!: any[];
 
-  get data(): TodoItemNode[] {
+  get data(): CategoryItemFlatNode[] {
     return this.dataChange.value;
   }
 
@@ -182,46 +266,29 @@ export class ChecklistDatabase {
   }
 
   initialize() {
-    // Build the tree nodes from Json object. The result is a list of `TodoItemNode` with nested
+    this.treeData = TREE_DATA;
+    // Build the tree nodes from Json object. The result is a list of `CategoryItemFlatNode` with nested
     //     file node as children.
-    const data = this.buildFileTree(TREE_DATA, 0);
+    const data = TREE_DATA;
 
     // Notify the change.
     this.dataChange.next(data);
   }
 
-  /**
-   * Build the file structure tree. The `value` is the Json object, or a sub-tree of a Json object.
-   * The return value is the list of `TodoItemNode`.
-   */
-  buildFileTree(obj: any, level: number): TodoItemNode[] {
-    return Object.keys(obj).reduce<TodoItemNode[]>((accumulator, key) => {
-      const value = obj[key];
-      const node = new TodoItemNode();
-      node.item = key;
-
-      if (value != null) {
-        if (typeof value === 'object') {
-          node.children = this.buildFileTree(value, level + 1);
-        } else {
-          node.item = value;
-        }
-      }
-
-      return accumulator.concat(node);
-    }, []);
+  insertRoot() {
+    this.dataChange.next(this.data);
   }
 
-  /** Add an item to to-do list */
-  insertItem(parent: TodoItemNode, name: string) {
+  /** Add an item to category list */
+  insertItem(parent: CategoryItemFlatNode, name: string) {
     if (parent.children) {
-      parent.children.push({ item: name } as TodoItemNode);
+      parent.children.push({ category_name: name } as CategoryItemFlatNode);
       this.dataChange.next(this.data);
     }
   }
 
-  updateItem(node: TodoItemNode, name: string) {
-    node.item = name;
+  updateItem(node: CategoryItemFlatNode, name: string) {
+    node.category_name = name;
     this.dataChange.next(this.data);
   }
 }
