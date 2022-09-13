@@ -68,9 +68,6 @@ export class AppComponent {
 
   hasChild = (_: number, _nodeData: CategoryFlatNode) => _nodeData.expandable;
 
-  hasNoContent = (_: number, _nodeData: CategoryFlatNode) =>
-    _nodeData.category_name === '';
-
   /**
    * Transformer to convert nested node to flat node. Record the nodes in maps for later use.
    */
@@ -136,11 +133,7 @@ export class AppComponent {
     this.database.insertItem(nestedNode!, itemValue);
   }
 
-  editNode(node: CategoryFlatNode, itemValue: string) {
-    node.category_name = itemValue;
-    const nestedNode = this.flatNodeMap.get(node);
-    console.log(nestedNode)
-  }
+  editNode(node: CategoryFlatNode, itemValue: string) {}
 
   onAddCategory() {
     const dialogRef = this.dialog.open(AddCategoryPopupComponent, {
@@ -187,10 +180,10 @@ export class AppComponent {
         return {
           ...item,
           isHidden: !item.isHidden,
-          children: nestHidden(item.children)
+          children: nestHidden(item.children),
         };
       });
-    console.log(nestHidden(this.dataSource.data));
+    this.database.updateTree(nestHidden(this.dataSource.data));
   }
 
   onEditCategory(node: CategoryFlatNode) {
@@ -198,13 +191,59 @@ export class AppComponent {
       data: { node, type: 'edit' },
     });
     dialogRef.afterClosed().subscribe((category_name) => {
-      // this.database.updateItem(node, category_name);
-      this.editNode(node, category_name)
+      const updateNested = (items: any) =>
+        items.map((item: CategoryItemFlatNode) => {
+          if (item.category_id === node.category_id) {
+            return {
+              ...item,
+              category_name,
+            };
+          }
+          if (item.children.length > 0) {
+            return {
+              ...item,
+              children: updateNested(item.children),
+            };
+          }
+          return {
+            ...item,
+          };
+        });
+      this.database.updateTree(updateNested(this.dataSource.data));
     });
   }
 
   onShowHidden(event: any) {
-    console.log();
+    const nestShowHidden = (items: any) =>
+      items.map((item: CategoryItemFlatNode) => {
+        return {
+          ...item,
+          expandable: event.checked,
+          children: nestShowHidden(item.children),
+        };
+      });
+    this.database.updateTree(nestShowHidden(this.dataSource.data));
+  }
+
+  flaternCategory(categories: any) {
+    let result: any = [];
+    for (let i = 0; i < categories.length; i++) {
+      const c = categories[i];
+      if (c.children) {
+        var cc = this.flaternCategory(c.children);
+        if (cc) {
+          result = result.concat(cc);
+        }
+      }
+      result.push(c);
+    }
+    return result.map((r: any) => ({
+      category_id: r.category_id,
+      category_name: r.category_name,
+      expandable: r.expandable,
+      isHidden: r.isHidden,
+      parent_category_id: r.parent_category_id,
+    }));
   }
 }
 
@@ -329,13 +368,6 @@ export class ChecklistDatabase {
       } as CategoryItemFlatNode);
       this.dataChange.next(this.data);
     }
-  }
-
-  updateItem(node: CategoryItemFlatNode, name: string) {
-    console.log('node', node)
-    console.log('name', name)
-    node.category_name = name;
-    this.dataChange.next(this.data);
   }
 
   updateTree(data: any) {

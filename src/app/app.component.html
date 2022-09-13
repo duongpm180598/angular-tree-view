@@ -54,11 +54,33 @@
 </mat-card>
 
 <div class="list-button">
-  <button mat-raised-button color="primary" (click)="onAddCategory()">Add category</button>
-  <button mat-raised-button color="primary" (click)="onAddSubCategory(checkedCategory)">Add subcategory</button>
-  <button mat-raised-button color="primary" (click)="onHideCategory(checkedCategory)">Hide</button>
-  <button mat-raised-button color="primary" (click)="onEditCategory(checkedCategory)">Edit</button>
+  <button mat-raised-button color="primary" (click)="onAddCategory()">
+    Add category
+  </button>
+  <button
+    mat-raised-button
+    color="primary"
+    (click)="onAddSubCategory(checkedCategory)"
+  >
+    Add subcategory
+  </button>
+  <button
+    mat-raised-button
+    color="primary"
+    (click)="onHideCategory(checkedCategory)"
+  >
+    Hide
+  </button>
+  <button
+    mat-raised-button
+    color="primary"
+    (click)="onEditCategory(checkedCategory)"
+  >
+    Edit
+  </button>
 </div>
+
+<div>{{ flaternCategory(dataSource.data) | json }}</div>
 
 <br />
 <br />
@@ -66,7 +88,5 @@
 
 <mat-card>
   <mat-card-title>Radio</mat-card-title>
-  <mat-card-content>
-
-  </mat-card-content>
+  <mat-card-content> </mat-card-content>
 </mat-card>
