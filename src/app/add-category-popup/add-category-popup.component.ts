@@ -17,7 +17,7 @@ export class AddCategoryPopupComponent implements OnInit {
   ) {
     this.title = data?.node?.category_name ? `Add subcategory for ${data?.node?.category_name}` : `Add category`;
     this.categoryForm = this.formBuilder.group({
-      category_name: [''],
+      category_name: [data.type === 'edit' ? data?.node?.category_name : ''],
     });
   }
 

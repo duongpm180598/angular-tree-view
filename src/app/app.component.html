@@ -20,22 +20,9 @@
           class="checklist-leaf-node"
           color="primary"
           [checked]="categorySelection.isSelected(node)"
-          (change)="categorySelection.toggle(node)"
+          (change)="onToggleNode(node)"
           >{{ node.category_name }}</mat-checkbox
         >
-      </mat-tree-node>
-
-      <mat-tree-node
-        *matTreeNodeDef="let node; when: hasNoContent"
-        matTreeNodePadding
-      >
-        <button mat-icon-button disabled></button>
-        <mat-form-field>
-          <input matInput #itemValue placeholder="New item..." />
-        </mat-form-field>
-        <button mat-button (click)="saveNode(node, itemValue.value)">
-          Save
-        </button>
       </mat-tree-node>
 
       <mat-tree-node
@@ -67,7 +54,7 @@
 </mat-card>
 
 <div class="list-button">
-  <button mat-raised-button color="primary" (click)="onAddCategory(checkedCategory)">Add category</button>
+  <button mat-raised-button color="primary" (click)="onAddCategory()">Add category</button>
   <button mat-raised-button color="primary" (click)="onAddSubCategory(checkedCategory)">Add subcategory</button>
   <button mat-raised-button color="primary" (click)="onHideCategory(checkedCategory)">Hide</button>
   <button mat-raised-button color="primary" (click)="onEditCategory(checkedCategory)">Edit</button>

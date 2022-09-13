@@ -54,7 +54,6 @@ export class AppComponent {
       this.treeControl,
       this.treeFlattener
     );
-
     database.dataChange.subscribe((data) => {
       this.dataSource.data = data;
     });
@@ -81,18 +80,16 @@ export class AppComponent {
       existingNode && existingNode.category_name === node.category_name
         ? existingNode
         : new CategoryFlatNode();
-    flatNode.category_id = node.category_id;
-    flatNode.parent_category_id = node.parent_category_id;
-    flatNode.isHidden = node.isHidden;
+    flatNode.category_id = node.category_id || 213; // || create random
+    flatNode.parent_category_id = node.parent_category_id || 0;
+    flatNode.isHidden = node.isHidden || false;
     flatNode.category_name = node.category_name;
     flatNode.level = level;
-    flatNode.expandable = !!node.children;
+    flatNode.expandable = node?.children?.length > 0;
     this.flatNodeMap.set(flatNode, node);
     this.nestedNodeMap.set(node, flatNode);
     return flatNode;
   };
-
-  onShowHidden(event: any) {}
 
   /** Whether all the descendants of the node are selected */
   descendantsAllSelected(node: CategoryFlatNode): boolean {
@@ -121,9 +118,13 @@ export class AppComponent {
     this.checkedCategory = this.categorySelection.isSelected(node) ? node : {};
   }
 
+  onToggleNode(node: CategoryFlatNode): void {
+    this.categorySelection.toggle(node);
+    this.checkedCategory = this.categorySelection.isSelected(node) ? node : {};
+  }
+
   /** Select the category so we can insert the new item. */
   addNewItem(node: CategoryFlatNode) {
-    console.log(node)
     const parentNode = this.flatNodeMap.get(node);
     this.database.insertItem(parentNode!, '');
     this.treeControl.expand(node);
@@ -132,15 +133,26 @@ export class AppComponent {
   /** Save the node to database */
   saveNode(node: CategoryFlatNode, itemValue: string) {
     const nestedNode = this.flatNodeMap.get(node);
-    this.database.updateItem(nestedNode!, itemValue);
+    this.database.insertItem(nestedNode!, itemValue);
   }
 
-  onAddCategory(node: CategoryFlatNode) {
+  onAddCategory() {
     const dialogRef = this.dialog.open(AddCategoryPopupComponent, {
       data: { category: this.checkedCategory },
     });
     dialogRef.afterClosed().subscribe((category_name) => {
-      console.log(category_name);
+      if (category_name) {
+        const data = [...this.dataSource.data];
+        data.push({
+          category_id: 4,
+          parent_category_id: 0,
+          category_name,
+          isHidden: false,
+          expandable: false,
+          children: [],
+        });
+        this.database.updateTree(data);
+      }
     });
     // console.log('this.checkedCategory', this.checkedCategory);
     // const nest = (items: any, category_id = 0, link = 'parent_category_id') =>
@@ -159,13 +171,34 @@ export class AppComponent {
     });
     dialogRef.afterClosed().subscribe((category_name) => {
       // this.addNewItem(node)
-      this.saveNode(node, category_name)
+      this.saveNode(node, category_name);
     });
   }
 
-  onHideCategory(node: CategoryFlatNode) {}
+  onHideCategory(node: CategoryFlatNode) {
+    const nestHidden = (items: any) =>
+      items.map((item: CategoryItemFlatNode) => {
+        return {
+          ...item,
+          isHidden: !item.isHidden,
+          children: nestHidden(item.children)
+        };
+      });
+    console.log(nestHidden(this.dataSource.data));
+  }
 
-  onEditCategory(node: CategoryFlatNode) {}
+  onEditCategory(node: CategoryFlatNode) {
+    const dialogRef = this.dialog.open(AddCategoryPopupComponent, {
+      data: { node, type: 'edit' },
+    });
+    dialogRef.afterClosed().subscribe((category_name) => {
+      this.database.updateItem(node, category_name);
+    });
+  }
+
+  onShowHidden(event: any) {
+    console.log();
+  }
 }
 
 /**
@@ -200,16 +233,14 @@ const TREE_DATA = [
     category_id: 1,
     parent_category_id: 0,
     category_name: 'Staffs',
-    ishidden: false,
-    level: null,
+    isHidden: false,
     expandable: false,
     children: [
       {
         category_id: 2,
         parent_category_id: 1,
         category_name: 'Teachers',
-        ishidden: false,
-        level: null,
+        isHidden: false,
         expandable: false,
         children: [],
       },
@@ -217,12 +248,19 @@ const TREE_DATA = [
         category_id: 3,
         parent_category_id: 1,
         category_name: 'Security',
-        ishidden: false,
-        level: null,
+        isHidden: false,
         expandable: false,
         children: [],
       },
     ],
+  },
+  {
+    category_id: 4,
+    parent_category_id: 0,
+    category_name: 'Manager',
+    isHidden: false,
+    expandable: false,
+    children: [],
   },
 ];
 
@@ -231,19 +269,19 @@ let TREE_DATA_2: any = [
     category_id: 1,
     parent_category_id: 0,
     category_name: 'Staffs',
-    ishidden: false,
+    isHidden: false,
   },
   {
     category_id: 2,
     parent_category_id: 1,
     category_name: 'Teachers',
-    ishidden: false,
+    isHidden: false,
   },
   {
     category_id: 3,
     parent_category_id: 1,
     category_name: 'Security',
-    ishidden: false,
+    isHidden: false,
   },
 ];
 
@@ -255,7 +293,6 @@ let TREE_DATA_2: any = [
 @Injectable()
 export class ChecklistDatabase {
   dataChange = new BehaviorSubject<any[]>([]);
-  treeData!: any[];
 
   get data(): CategoryItemFlatNode[] {
     return this.dataChange.value;
@@ -266,7 +303,6 @@ export class ChecklistDatabase {
   }
 
   initialize() {
-    this.treeData = TREE_DATA;
     // Build the tree nodes from Json object. The result is a list of `CategoryItemFlatNode` with nested
     //     file node as children.
     const data = TREE_DATA;
@@ -275,14 +311,15 @@ export class ChecklistDatabase {
     this.dataChange.next(data);
   }
 
-  insertRoot() {
-    this.dataChange.next(this.data);
-  }
-
   /** Add an item to category list */
   insertItem(parent: CategoryItemFlatNode, name: string) {
     if (parent.children) {
-      parent.children.push({ category_name: name } as CategoryItemFlatNode);
+      parent.children.push({
+        category_id: parent.category_id,
+        parent_category_id: parent.parent_category_id,
+        category_name: name,
+        isHidden: parent.isHidden,
+      } as CategoryItemFlatNode);
       this.dataChange.next(this.data);
     }
   }
@@ -290,5 +327,9 @@ export class ChecklistDatabase {
   updateItem(node: CategoryItemFlatNode, name: string) {
     node.category_name = name;
     this.dataChange.next(this.data);
+  }
+
+  updateTree(data: any) {
+    this.dataChange.next(data);
   }
 }
