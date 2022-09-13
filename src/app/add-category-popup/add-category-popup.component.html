@@ -12,6 +12,6 @@
 <div mat-dialog-actions>
   <button mat-button (click)="close()">Close</button>
   <button mat-button [mat-dialog-close]="categoryName" cdkFocusInitial>
-    Add
+    {{ data.type ? "Update" : "Add" }}
   </button>
 </div>

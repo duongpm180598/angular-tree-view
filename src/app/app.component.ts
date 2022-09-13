@@ -2,6 +2,7 @@ import { SelectionModel } from '@angular/cdk/collections';
 import { FlatTreeControl, NestedTreeControl } from '@angular/cdk/tree';
 import { Component, Injectable } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import {
   MatTreeFlatDataSource,
   MatTreeFlattener,
@@ -17,6 +18,7 @@ import { AddCategoryPopupComponent } from './add-category-popup/add-category-pop
 export class AppComponent {
   title = 'treeview';
   checkedCategory: any;
+  showHidden = false;
   /** Map from flat node to nested node. This helps us finding the nested node to be modified */
   flatNodeMap = new Map<CategoryFlatNode, CategoryItemFlatNode>();
 
@@ -39,7 +41,11 @@ export class AppComponent {
   /** The selection for checklist */
   categorySelection = new SelectionModel<CategoryFlatNode>(true /* multiple */);
 
-  constructor(private database: ChecklistDatabase, private dialog: MatDialog) {
+  constructor(
+    private database: ChecklistDatabase,
+    private dialog: MatDialog,
+    private _snackBar: MatSnackBar
+  ) {
     this.treeFlattener = new MatTreeFlattener(
       this.transformer,
       this.getLevel,
@@ -170,7 +176,9 @@ export class AppComponent {
     });
     dialogRef.afterClosed().subscribe((category_name) => {
       // this.addNewItem(node)
-      this.saveNode(node, category_name);
+      if (category_name) {
+        this.saveNode(node, category_name);
+      }
     });
   }
 
@@ -191,38 +199,48 @@ export class AppComponent {
       data: { node, type: 'edit' },
     });
     dialogRef.afterClosed().subscribe((category_name) => {
-      const updateNested = (items: any) =>
-        items.map((item: CategoryItemFlatNode) => {
-          if (item.category_id === node.category_id) {
+      if (category_name) {
+        const updateNested = (items: any) =>
+          items.map((item: CategoryItemFlatNode) => {
+            if (item.category_id === node.category_id) {
+              return {
+                ...item,
+                category_name,
+              };
+            }
+            if (item.children.length > 0) {
+              return {
+                ...item,
+                children: updateNested(item.children),
+              };
+            }
             return {
               ...item,
-              category_name,
             };
-          }
-          if (item.children.length > 0) {
-            return {
-              ...item,
-              children: updateNested(item.children),
-            };
-          }
-          return {
-            ...item,
-          };
-        });
-      this.database.updateTree(updateNested(this.dataSource.data));
+          });
+        this.database.updateTree(updateNested(this.dataSource.data));
+      }
     });
   }
 
   onShowHidden(event: any) {
-    const nestShowHidden = (items: any) =>
-      items.map((item: CategoryItemFlatNode) => {
-        return {
-          ...item,
-          expandable: event.checked,
-          children: nestShowHidden(item.children),
-        };
-      });
-    this.database.updateTree(nestShowHidden(this.dataSource.data));
+    this.showHidden = event.checked;
+    // const nestShowHidden = (items: any) =>
+    //   items.map((item: CategoryItemFlatNode) => {
+    //     return {
+    //       ...item,
+    //       expandable: event.checked,
+    //       children: nestShowHidden(item.children),
+    //     };
+    //   });
+    // this.database.updateTree(nestShowHidden(this.dataSource.data));
+    this.nestedNodeMap.forEach((node) => {
+      if (node.isHidden) {
+        this.treeControl.expand(node);
+      } else {
+        this.treeControl.collapse(node);
+      }
+    });
   }
 
   flaternCategory(categories: any) {
@@ -244,6 +262,10 @@ export class AppComponent {
       isHidden: r.isHidden,
       parent_category_id: r.parent_category_id,
     }));
+  }
+
+  flatNode(node: CategoryFlatNode): any {
+    return this.flatNodeMap.get(node);
   }
 }
 

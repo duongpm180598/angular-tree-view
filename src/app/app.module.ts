@@ -15,6 +15,7 @@ import { AddCategoryPopupComponent } from './add-category-popup/add-category-pop
 import { ReactiveFormsModule } from '@angular/forms';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { MatInputModule } from '@angular/material/input';
+import {MatSnackBarModule} from '@angular/material/snack-bar';
 
 @NgModule({
   declarations: [AppComponent, AddCategoryPopupComponent],
@@ -32,6 +33,7 @@ import { MatInputModule } from '@angular/material/input';
     MatRadioModule,
     MatCardModule,
     MatDialogModule,
+    MatSnackBarModule,
     ReactiveFormsModule,
   ],
   providers: [ChecklistDatabase],
