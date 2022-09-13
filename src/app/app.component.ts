@@ -159,15 +159,6 @@ export class AppComponent {
         this.database.updateTree(data);
       }
     });
-    // console.log('this.checkedCategory', this.checkedCategory);
-    // const nest = (items: any, category_id = 0, link = 'parent_category_id') =>
-    //   items
-    //     .filter((item: any) => item[link] === category_id)
-    //     .map((item: any) => ({
-    //       ...items,
-    //       children: nest(items, item.category_id),
-    //     }));
-    // console.log(nest(TREE_DATA_2));
   }
 
   onAddSubCategory(node: CategoryFlatNode) {
@@ -183,15 +174,28 @@ export class AppComponent {
   }
 
   onHideCategory(node: CategoryFlatNode) {
-    const nestHidden = (items: any) =>
-      items.map((item: CategoryItemFlatNode) => {
-        return {
-          ...item,
-          isHidden: !item.isHidden,
-          children: nestHidden(item.children),
-        };
+    const data: any = [];
+    this.nestedNodeMap.forEach((nestedNode) => {
+      nestedNode.isHidden = this.categorySelection.isSelected(nestedNode);
+      data.push({
+        category_id: nestedNode.category_id,
+        category_name: nestedNode.category_id,
+        expandable: nestedNode.expandable,
+        isHidden: nestedNode.isHidden,
+        level: nestedNode.level,
+        parent_category_id: nestedNode.parent_category_id,
       });
-    this.database.updateTree(nestHidden(this.dataSource.data));
+    });
+    console.log(this.convertListObjectToTreeView(data))
+    // const nestHidden = (items: any) =>
+    //   items.map((item: CategoryItemFlatNode) => {
+    //     return {
+    //       ...item,
+    //       isHidden: !item.isHidden,
+    //       children: nestHidden(item.children),
+    //     };
+    //   });
+    // this.database.updateTree(this.convertListObjectToTreeView(data));
   }
 
   onEditCategory(node: CategoryFlatNode) {
@@ -262,6 +266,17 @@ export class AppComponent {
       isHidden: r.isHidden,
       parent_category_id: r.parent_category_id,
     }));
+  }
+
+  convertListObjectToTreeView(data: any) {
+    const nest = (items: any, category_id = 0, link = 'parent_category_id') =>
+      items
+        .filter((item: any) => item[link] === category_id)
+        .map((item: any) => ({
+          ...items,
+          children: nest(items, item.category_id),
+        }));
+    return nest(data);
   }
 
   flatNode(node: CategoryFlatNode): any {
