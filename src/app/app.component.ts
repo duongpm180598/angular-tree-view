@@ -136,6 +136,12 @@ export class AppComponent {
     this.database.insertItem(nestedNode!, itemValue);
   }
 
+  editNode(node: CategoryFlatNode, itemValue: string) {
+    node.category_name = itemValue;
+    const nestedNode = this.flatNodeMap.get(node);
+    console.log(nestedNode)
+  }
+
   onAddCategory() {
     const dialogRef = this.dialog.open(AddCategoryPopupComponent, {
       data: { category: this.checkedCategory },
@@ -192,7 +198,8 @@ export class AppComponent {
       data: { node, type: 'edit' },
     });
     dialogRef.afterClosed().subscribe((category_name) => {
-      this.database.updateItem(node, category_name);
+      // this.database.updateItem(node, category_name);
+      this.editNode(node, category_name)
     });
   }
 
@@ -325,6 +332,8 @@ export class ChecklistDatabase {
   }
 
   updateItem(node: CategoryItemFlatNode, name: string) {
+    console.log('node', node)
+    console.log('name', name)
     node.category_name = name;
     this.dataChange.next(this.data);
   }
